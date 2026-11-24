@@ -58,10 +58,13 @@ SYLLABLES = {
 }
 
 # The competition gate: /output/entry.txt must be UTF-8 text of
-# 1 to 200 characters, not only white space.
+# 1 to 200 characters, not only white space. The leaderboard tiebreak
+# is fewer bytes, so the file is written byte-exact: the haiku, no
+# trailing newline (68 bytes).
 MIN_CHARS = 1
 MAX_CHARS = 200
 SHAPE = (5, 7, 5)
+BYTE_LEN = 68
 
 
 def validate_entry(text: str) -> None:
@@ -74,6 +77,13 @@ def validate_entry(text: str) -> None:
             f"entry text is {n} characters; the gate allows "
             f"{MIN_CHARS} to {MAX_CHARS}"
         )
+    if len(text.encode("utf-8")) != BYTE_LEN:
+        raise SystemExit(
+            f"entry text is {len(text.encode('utf-8'))} bytes; "
+            f"the haiku is {BYTE_LEN}"
+        )
+    if text != text.strip():
+        raise SystemExit("entry text must not start or end with blank space")
     lines = text.split("\n")
     if len(lines) != 3:
         raise SystemExit(f"entry must be three lines, got {len(lines)}")
@@ -90,7 +100,11 @@ def main() -> None:
     validate_entry(HAIKU)
     out = Path(OUTPUT_DIR)
     out.mkdir(parents=True, exist_ok=True)
-    out.joinpath("entry.txt").write_text(HAIKU, encoding="utf-8")
+    target = out.joinpath("entry.txt")
+    target.write_text(HAIKU, encoding="utf-8")
+    written = target.read_bytes()
+    if written != HAIKU.encode("utf-8"):
+        raise SystemExit("entry.txt on disk differs from the haiku")
 
 
 if __name__ == "__main__":
